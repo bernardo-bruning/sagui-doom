@@ -1,0 +1,26 @@
+# Incorporar no Makefile do SaguiOS.
+DOOM_SRC_NAMES := $(filter-out i_input w_file_stdc doomgeneric_soso,$(patsubst %.o,%,$(shell sed -n 's/^SRC_DOOM = //p' userland/doom/upstream/Makefile.soso)))
+DOOM_UP_OBJ := $(addprefix $(B)/userland/doom/upstream/,$(addsuffix .o,$(DOOM_SRC_NAMES)))
+DOOM_PORT_OBJ := $(addprefix $(B)/userland/doom/,compat.o doomgeneric_sagui.o i_input_sagui.o w_file_sagui.o main.o inicio.asm.o)
+DOOM_OBJ := $(DOOM_UP_OBJ) $(DOOM_PORT_OBJ)
+PROGRAMAS += $(B)/userland/bin/doom
+
+DOOM_CFLAGS := $(UCFLAGS) -Iuserland/doom/include -Iuserland/doom/upstream \
+           -DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE -DSAGUI_DOOM_NO_MOUSE \
+           -Wno-error=implicit-function-declaration
+$(B)/userland/doom/upstream/%.o: userland/doom/upstream/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(DOOM_CFLAGS) -c -o $@ $<
+
+$(B)/userland/doom/%.o: userland/doom/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(DOOM_CFLAGS) -c -o $@ $<
+
+$(B)/userland/doom/inicio.asm.o: userland/libsagui/inicio.asm
+	@mkdir -p $(dir $@)
+	$(AS) -f elf32 -o $@ $<
+
+$(B)/userland/bin/doom: $(DOOM_OBJ) userland/programa.ld
+	@mkdir -p $(dir $@)
+	$(LD) $(ULDFLAGS) -o $@.elf $(DOOM_OBJ)
+	objcopy --strip-all $@.elf $@
